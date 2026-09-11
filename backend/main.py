@@ -1,4 +1,4 @@
-from agent import investigate_with_agent
+from agent import investigate_with_agent, get_agent_trace
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, HTTPException
 import pandas as pd
@@ -460,7 +460,9 @@ def investigate_project(
 @app.get("/agent/investigate")
 def agent_investigate(query: str):
     response = investigate_with_agent(query)
+
     return {
         "query": query,
-        "response": response
+        "response": response,
+        "trace": get_agent_trace()
     }

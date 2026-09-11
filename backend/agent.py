@@ -567,10 +567,32 @@ tools = [
 
 
 # =========================================================
+# AGENT EXECUTION TRACE
+# =========================================================
+
+LAST_AGENT_TRACE = []
+
+
+def reset_agent_trace():
+    global LAST_AGENT_TRACE
+    LAST_AGENT_TRACE = []
+
+
+def get_agent_trace():
+    return list(LAST_AGENT_TRACE)
+
+
+# =========================================================
 # TOOL EXECUTOR
 # =========================================================
 
 def execute_tool(tool_name, arguments):
+
+    LAST_AGENT_TRACE.append({
+        "tool": tool_name,
+        "status": "executed",
+        "arguments": arguments
+    })
 
     # -----------------------------------------------------
     # GET PROJECT DETAILS
@@ -626,6 +648,16 @@ def execute_tool(tool_name, arguments):
 # =========================================================
 # AI INVESTIGATION AGENT
 # =========================================================
+
+def _fallback_with_trace(work_id, user_query=""):
+    """Run the deterministic fallback and record synthesis completion."""
+    result = _deterministic_fallback(work_id, user_query)
+    LAST_AGENT_TRACE.append({
+        "tool": "Deterministic evidence synthesis",
+        "status": "completed"
+    })
+    return result
+
 
 def _deterministic_fallback(work_id, user_query=""):
     """Evidence-based local fallback used when Groq is unavailable.
@@ -845,6 +877,8 @@ def _deterministic_fallback(work_id, user_query=""):
 
 def investigate_with_agent(user_query: str):
 
+    reset_agent_trace()
+
     # Deterministic path for explicit comparison requests.
     # The frontend supplies the Work ID in the query, so we can guarantee that
     # compare_projects evidence reaches the final synthesis step.
@@ -859,6 +893,14 @@ def investigate_with_agent(user_query: str):
         work_id_match = re.search(r"work\s*id\s*(?:is|:)?\s*(\d+)", normalized_query)
         if work_id_match:
             comparison_work_id = int(work_id_match.group(1))
+
+            # Retrieve authoritative project/risk evidence first.
+            # Execution order: project details -> comparison -> synthesis.
+            risk_result = execute_tool(
+                "get_project_details",
+                {"work_id": comparison_work_id}
+            )
+
             direct_result = execute_tool(
                 "compare_projects",
                 {"work_id": comparison_work_id, "limit": 5}
@@ -869,12 +911,6 @@ def investigate_with_agent(user_query: str):
             # remains the source of truth for the dashboard table.
             target = direct_result.get("target_project", {})
             comparisons = direct_result.get("comparisons", [])
-
-            # Retrieve the authoritative risk evidence shown in the investigation UI.
-            risk_result = execute_tool(
-                "get_project_details",
-                {"work_id": comparison_work_id}
-            )
 
             qualitative_comparisons = []
             for item in comparisons:
@@ -894,8 +930,28 @@ def investigate_with_agent(user_query: str):
                 })
 
             risk_reasons = risk_result.get("risk_reasons", [])
-            if not isinstance(risk_reasons, list):
-                risk_reasons = []
+
+            # The tool may return risk_reasons as a stringified Python list.
+            # Normalize it before sending evidence to the AI so risk indicators
+            # cannot be accidentally discarded.
+            if isinstance(risk_reasons, str):
+                try:
+                    parsed = ast.literal_eval(risk_reasons)
+                    if isinstance(parsed, list):
+                        risk_reasons = parsed
+                    else:
+                        risk_reasons = [risk_reasons]
+                except (ValueError, SyntaxError):
+                    risk_reasons = [risk_reasons]
+
+            elif not isinstance(risk_reasons, list):
+                risk_reasons = [str(risk_reasons)]
+
+            risk_reasons = [
+                str(reason).strip()
+                for reason in risk_reasons
+                if str(reason).strip()
+            ]
 
             direct_evidence = json.dumps({
                 "risk_evidence": {
@@ -944,9 +1000,10 @@ def investigate_with_agent(user_query: str):
                           "is substantially higher than all returned comparables'.\n"
                         + "The deterministic dashboard/tool output is the ONLY source of exact "
                           "financial values.\n"
-                         + "The risk_evidence.risk_reasons list is authoritative. Use all returned "
-                           "risk reasons in the Evidence Summary and never claim that no specific "
-                           "risk indicators were provided when risk_reasons are present.\n"
+                         + "The risk_evidence.risk_reasons list is authoritative. You MUST use every "
+                           "returned risk reason in the Evidence Summary. If the list is non-empty, "
+                           "you MUST NOT say that no specific risk reasons or risk indicators were returned. "
+                           "Do not omit, replace, or contradict the supplied risk reasons.\n"
                     )
                 },
                 {"role": "user", "content": user_query},
@@ -970,10 +1027,14 @@ def investigate_with_agent(user_query: str):
                     include_reasoning=False,
                     max_completion_tokens=1200
                 )
+                LAST_AGENT_TRACE.append({
+                    "tool": "AI synthesis",
+                    "status": "completed"
+                })
                 return direct_final.choices[0].message.content
             except Exception as exc:
                 if exc.__class__.__name__ == "RateLimitError" or "rate limit" in str(exc).lower():
-                    return _deterministic_fallback(comparison_work_id, user_query)
+                    return _fallback_with_trace(comparison_work_id, user_query)
                 raise
 
     messages = [
@@ -1021,7 +1082,7 @@ def investigate_with_agent(user_query: str):
     except Exception as exc:
         if exc.__class__.__name__ == "RateLimitError" or "rate limit" in str(exc).lower():
             match = re.search(r"\b(?:work\s*id\s*)?(\d{4,})\b", user_query, re.I)
-            return _deterministic_fallback(int(match.group(1)), user_query) if match else "AI investigation is temporarily unavailable because the Groq daily token limit has been reached."
+            return _fallback_with_trace(int(match.group(1)), user_query) if match else "AI investigation is temporarily unavailable because the Groq daily token limit has been reached."
         raise
 
     assistant_message = response.choices[0].message
@@ -1122,11 +1183,15 @@ def investigate_with_agent(user_query: str):
             include_reasoning=False,
             max_completion_tokens=1200
         )
+        LAST_AGENT_TRACE.append({
+            "tool": "AI synthesis",
+            "status": "completed"
+        })
         return final_response.choices[0].message.content
     except Exception as exc:
         if exc.__class__.__name__ == "RateLimitError" or "rate limit" in str(exc).lower():
             match = re.search(r"\b(?:work\s*id\s*)?(\d{4,})\b", user_query, re.I)
-            return _deterministic_fallback(int(match.group(1)), user_query) if match else "AI investigation is temporarily unavailable because the Groq daily token limit has been reached."
+            return _fallback_with_trace(int(match.group(1)), user_query) if match else "AI investigation is temporarily unavailable because the Groq daily token limit has been reached."
         raise
 
     # =====================================================

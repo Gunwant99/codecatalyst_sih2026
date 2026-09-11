@@ -1493,3 +1493,123 @@ td strong {
     gap: 7px;
   }
 }
+
+
+/* ---------- AGENT WORKFLOW ---------- */
+
+.agent-workflow {
+  margin-top: 18px;
+  padding: 16px 17px;
+  border: 1px solid #e3e8f0;
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+.agent-workflow-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.agent-workflow-header .eyebrow {
+  margin-bottom: 4px;
+}
+
+.agent-workflow-header strong {
+  color: #33425e;
+  font-size: 12px;
+}
+
+.agent-workflow-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border: 1px solid #dfe7f1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #64728a;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.agent-workflow-live span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #25a76d;
+}
+
+.agent-workflow-steps {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.agent-workflow-step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.agent-step-marker {
+  position: relative;
+  z-index: 2;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d7e0ed;
+  border-radius: 50%;
+  background: #eef3fa;
+  color: #4f689a;
+}
+
+.agent-step-content {
+  padding: 0 9px;
+}
+
+.agent-step-content span {
+  color: #56647b;
+  font-size: 10px;
+  line-height: 1.35;
+  font-weight: 650;
+}
+
+.agent-step-line {
+  height: 1px;
+  flex: 1;
+  min-width: 12px;
+  background: #dce3ed;
+}
+
+@media (max-width: 760px) {
+  .agent-workflow-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .agent-workflow-step {
+    min-height: 39px;
+    flex: none;
+  }
+
+  .agent-step-content {
+    padding-left: 10px;
+  }
+
+  .agent-step-line {
+    position: absolute;
+    left: 13px;
+    top: 28px;
+    width: 1px;
+    height: 11px;
+    min-width: 0;
+  }
+}

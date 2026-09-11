@@ -24,6 +24,7 @@ function App() {
   const [aiResponse, setAiResponse] = useState("");
   const [aiQuery, setAiQuery] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [agentTrace, setAgentTrace] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [dashboard, setDashboard] = useState(null);
@@ -66,6 +67,7 @@ function App() {
     setError("");
     setInvestigation(null);
     setAiResponse("");
+    setAgentTrace([]);
 
     try {
       const result = await fetch(
@@ -88,6 +90,7 @@ function App() {
       if (ai.ok) {
         const aiData = await ai.json();
         setAiResponse(aiData.response);
+        setAgentTrace(Array.isArray(aiData.trace) ? aiData.trace : []);
       }
     } catch (err) {
       setError(
@@ -108,6 +111,7 @@ function App() {
 
     setAiLoading(true);
     setError("");
+    setAgentTrace([]);
 
     try {
       const query = `For MPLADS Work ID ${workId.trim()}: ${question.trim()}`;
@@ -123,6 +127,7 @@ function App() {
       const aiData = await ai.json();
 
       setAiResponse(aiData.response);
+      setAgentTrace(Array.isArray(aiData.trace) ? aiData.trace : []);
       setAiQuery("");
     } catch (err) {
       setError(
@@ -795,6 +800,11 @@ function App() {
                 </button>
               </div>
 
+              {/* REAL AGENT WORKFLOW */}
+              {agentTrace.length > 0 && (
+                <AgentWorkflow trace={agentTrace} />
+              )}
+
               {/* AI RESPONSE */}
               {aiResponse && (
                 <div className="ai-response">
@@ -812,6 +822,81 @@ function App() {
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+function AgentWorkflow({ trace }) {
+  const hasTool = (name) =>
+    trace.some((step) => step.tool === name && step.status === "executed");
+
+  const steps = [
+    {
+      key: "start",
+      label: "Investigation started",
+      always: true,
+    },
+    {
+      key: "details",
+      label: "Project details retrieved",
+      active: hasTool("get_project_details"),
+    },
+    {
+      key: "risk",
+      label: "Risk indicators assessed",
+      active: hasTool("get_project_details"),
+    },
+    {
+      key: "compare",
+      label: "Comparable projects analyzed",
+      active: hasTool("compare_projects"),
+    },
+    {
+      key: "brief",
+      label: "Investigation brief generated",
+      active: trace.some(
+        (step) =>
+          (step.tool === "AI synthesis" ||
+            step.tool === "Deterministic evidence synthesis") &&
+          step.status === "completed"
+      ),
+    },
+  ];
+
+  const visibleSteps = steps.filter(
+    (step) => step.always || step.active || step.key === "risk"
+  );
+
+  return (
+    <div className="agent-workflow">
+      <div className="agent-workflow-header">
+        <div>
+          <div className="eyebrow">AGENT WORKFLOW</div>
+          <strong>Investigation steps executed</strong>
+        </div>
+        <span className="agent-workflow-live">
+          <span></span>
+          Traceable
+        </span>
+      </div>
+
+      <div className="agent-workflow-steps">
+        {visibleSteps.map((step, index) => (
+          <div className="agent-workflow-step" key={step.key}>
+            <div className="agent-step-marker">
+              <CheckCircle2 size={15} />
+            </div>
+
+            <div className="agent-step-content">
+              <span>{step.label}</span>
+            </div>
+
+            {index < visibleSteps.length - 1 && (
+              <div className="agent-step-line"></div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
