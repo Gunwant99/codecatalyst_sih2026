@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import os
 import json
 import re
+import ast
 
 from tools import (
     get_project_details,
@@ -644,8 +645,38 @@ def _deterministic_fallback(work_id, user_query=""):
         reasons = details.get("risk_reasons", [])
         if not reasons and isinstance(target, dict):
             reasons = target.get("risk_reasons", [])
-    if not isinstance(reasons, list):
+
+    # Normalize risk reasons so they always render as separate bullets.
+    if isinstance(reasons, str):
+        try:
+            parsed = ast.literal_eval(reasons)
+            if isinstance(parsed, list):
+                reasons = parsed
+            else:
+                reasons = [reasons]
+        except (ValueError, SyntaxError):
+            reasons = [reasons]
+
+    elif isinstance(reasons, list):
+        # Handles cases where the list itself contains a stringified list.
+        if (
+            len(reasons) == 1
+            and isinstance(reasons[0], str)
+            and reasons[0].strip().startswith("[")
+        ):
+            try:
+                parsed = ast.literal_eval(reasons[0])
+                if isinstance(parsed, list):
+                    reasons = parsed
+            except (ValueError, SyntaxError):
+                pass
+
+    else:
         reasons = [str(reasons)]
+
+    reasons = [str(reason) for reason in reasons if str(reason).strip()]
+
+
 
     score = target.get("risk_score", details.get("risk_score", "N/A"))
     level = target.get("risk_level", details.get("risk_level", "N/A"))
@@ -706,7 +737,19 @@ def _deterministic_fallback(work_id, user_query=""):
             "5. Review contractor and supporting records where available.",
             "",
             "### Priority",
-            "Start with the amount, scope and supporting expenditure records because the project carries a contextual cost-risk indicator.",
+            (
+                "This project has no major automated risk indicators. "
+                "Routine verification should focus on confirming the project scope, "
+                "expenditure records and available site evidence."
+                if str(level).upper() == "LOW"
+                else
+                "Prioritize detailed financial, scope, procurement and site verification "
+                "because multiple risk indicators require closer investigation."
+                if str(level).upper() == "HIGH"
+                else
+                "Prioritize verification of the amount, project scope and supporting "
+                "expenditure records because the project has contextual risk indicators."
+            ),
             "",
             "These checks support human investigation; they do not establish fraud or wrongdoing.",
         ]

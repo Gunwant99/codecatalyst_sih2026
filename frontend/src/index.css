@@ -1359,3 +1359,137 @@ td strong {
     grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
   }
 }
+
+/* ---------- COST CONTEXT VISUAL ---------- */
+
+.cost-context {
+  margin: 2px 0 22px;
+  padding: 17px;
+  border: 1px solid #e6eaf0;
+  border-radius: 13px;
+  background: #fbfcfe;
+}
+
+.cost-context-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.cost-context-title {
+  color: #263653;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.cost-context-header p {
+  margin: 4px 0 0;
+  color: #8993a6;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.cost-context-note {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: #edf3ff;
+  color: #4e6799;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.cost-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.cost-row {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  align-items: center;
+  gap: 12px;
+}
+
+.cost-row-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cost-row-label strong {
+  color: #59657b;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.cost-row-label span {
+  color: #7d8799;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.cost-track {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf0f5;
+}
+
+.cost-fill {
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: #a9b8d5;
+  transition: width 0.35s ease;
+}
+
+.cost-row.target .cost-row-label strong,
+.cost-row.target .cost-row-label span {
+  color: #2e4269;
+}
+
+.cost-row.target .cost-fill {
+  background: #4f6fae;
+}
+
+.cost-context-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 13px;
+  padding-top: 10px;
+  border-top: 1px solid #edf0f4;
+  color: #8a94a7;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.cost-context-footer strong {
+  color: #4a5f88;
+}
+
+@media (max-width: 600px) {
+  .cost-row {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+
+  .cost-row-label {
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  .cost-context-header,
+  .cost-context-footer {
+    flex-direction: column;
+    gap: 7px;
+  }
+}

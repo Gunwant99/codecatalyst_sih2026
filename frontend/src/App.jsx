@@ -619,6 +619,11 @@ function App() {
                 </div>
               </div>
 
+              <CostContextChart
+                targetAmount={investigation.project.amount}
+                projects={investigation.similar_projects}
+              />
+
               <div className="table-wrapper">
                 <table>
                   <thead>
@@ -807,6 +812,75 @@ function App() {
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+function CostContextChart({ targetAmount, projects }) {
+  const formatChartINR = (value) =>
+    `₹${Number(value || 0).toLocaleString("en-IN", {
+      maximumFractionDigits: 0,
+    })}`;
+
+  const target = Number(targetAmount || 0);
+
+  const rows = [
+    { id: "Target", amount: target, target: true },
+    ...(Array.isArray(projects) ? projects : []).map((project) => ({
+      id: String(project["Work ID"]),
+      amount: Number(project.Amount || 0),
+      target: false,
+    })),
+  ];
+
+  const maxAmount = Math.max(...rows.map((row) => row.amount), 1);
+
+  return (
+    <div className="cost-context">
+      <div className="cost-context-header">
+        <div>
+          <div className="cost-context-title">Cost Context</div>
+          <p>
+            Target project amount compared with the five contextual matches.
+          </p>
+        </div>
+        <span className="cost-context-note">Contextual signal</span>
+      </div>
+
+      <div className="cost-bars">
+        {rows.map((row) => {
+          const width =
+            row.amount > 0
+              ? Math.max((row.amount / maxAmount) * 100, 2)
+              : 0;
+
+          return (
+            <div
+              className={`cost-row ${row.target ? "target" : ""}`}
+              key={row.id}
+            >
+              <div className="cost-row-label">
+                <strong>{row.id}</strong>
+                <span>{formatChartINR(row.amount)}</span>
+              </div>
+
+              <div className="cost-track">
+                <div
+                  className="cost-fill"
+                  style={{ width: `${width}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="cost-context-footer">
+        <span>
+          Target: <strong>{formatChartINR(target)}</strong>
+        </span>
+        <span>Bars are scaled to the highest amount shown.</span>
+      </div>
     </div>
   );
 }
